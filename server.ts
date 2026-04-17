@@ -23,7 +23,9 @@ async function startServer() {
   });
 
   app.use(cors({
-    origin: "*", // In production, replace with your actual Netlify URL for better security
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true
   }));
   app.use(express.json());
