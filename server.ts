@@ -133,24 +133,31 @@ async function startServer() {
       const { prompt, config } = req.body;
       
       if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        console.error("Missing GEMINI_API_KEY in environment variables.");
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. Please add it to your Render dashboard." });
       }
 
-      // Use the standard generative AI model pattern
-      const modelName = "gemini-1.5-flash"; // More stable name across environments
-      const model = ai.getGenerativeModel({ model: modelName });
+      // Use the correct pattern from the gemini-api skill:
+      // ai.models.generateContent({ model: "...", contents: "..." })
+      const modelName = "gemini-3-flash-preview"; 
       
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: config || {}
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: config || {}
       });
       
-      const response = await result.response;
-      const text = response.text();
+      // Use the .text property (not a method) as per the skill
+      const text = response.text || "";
+      
+      if (!text) {
+        throw new Error("AI returned an empty response.");
+      }
+
       res.json({ text: text });
     } catch (error: any) {
-      console.error("AI Error:", error);
-      res.status(500).json({ error: `AI Processing failed: ${error.message}` });
+      console.error("AI Error Detailed:", error);
+      res.status(500).json({ error: `AI Processing failed: ${error.message || "Unknown error"}` });
     }
   });
 

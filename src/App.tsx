@@ -322,9 +322,10 @@ export default function App() {
       const parsedAnalysis = JSON.parse(jsonStr);
       setAnalysis(parsedAnalysis);
       setActiveTab("dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis error:", error);
-      alert("Analysis failed. Please ensure your Gemini API key is valid and check the browser console for details.");
+      const errorMessage = error.message || "Unknown error occurred";
+      alert(`Analysis failed: ${errorMessage}\n\nPlease ensure your GEMINI_API_KEY is correctly set in your Render environment variables.`);
     } finally {
       setIsAnalyzing(false);
     }
