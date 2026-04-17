@@ -160,8 +160,8 @@ export default function App() {
           const apiUrl = (import.meta as any).env.VITE_API_URL || "";
           xhr.open("POST", `${apiUrl}/api/upload`);
           
-          // AI Studio session cookie support
-          xhr.withCredentials = true;
+          // CORS settings - set to false for standard manual hosting
+          xhr.withCredentials = false;
           
           // AI Studio proxy hint: adding this header can sometimes prevent HTML challenge redirects
           xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");

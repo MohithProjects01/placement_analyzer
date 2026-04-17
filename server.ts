@@ -22,7 +22,10 @@ async function startServer() {
     limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
   });
 
-  app.use(cors());
+  app.use(cors({
+    origin: "*", // In production, replace with your actual Netlify URL for better security
+    credentials: true
+  }));
   app.use(express.json());
 
   // API to upload and parse PDF
