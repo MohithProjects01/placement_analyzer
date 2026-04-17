@@ -23,6 +23,7 @@ import {
   Send,
   ExternalLink,
   Trash2,
+  Menu,
 } from "lucide-react";
 import { 
   BarChart, 
@@ -86,6 +87,8 @@ export default function App() {
   const [isChatting, setIsChatting] = useState(false);
   const [expandedPatterns, setExpandedPatterns] = useState<Record<number, boolean>>({});
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Persistence Hooks
   useEffect(() => {
@@ -106,7 +109,7 @@ export default function App() {
     }
   }, [messages, isHistoryLoaded]);
 
-  // Gemini Proxy Setup - Keeps API Key Secure on the Backend (Render)
+  // AI Intelligence Setup - Keeps API Key Secure on the Backend (Render)
   const apiBase = (import.meta as any).env.VITE_API_URL || "";
   const ai = React.useMemo(() => ({
     models: {
@@ -163,7 +166,7 @@ export default function App() {
           // CORS settings - set to false for standard manual hosting
           xhr.withCredentials = false;
           
-          // AI Studio proxy hint: adding this header can sometimes prevent HTML challenge redirects
+          // Proxy hint: adding this header can sometimes prevent HTML challenge redirects
           xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
           
           xhr.upload.onprogress = (event) => {
@@ -178,10 +181,10 @@ export default function App() {
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
-                // Check if response is HTML (likely AI Studio Cookie Check redirect)
+                // Check if response is HTML (likely Proxy Cookie Check redirect)
                 if (typeof xhr.response === 'string' && (xhr.response.trim().startsWith("<!doctype") || xhr.response.trim().startsWith("<html"))) {
                   if (xhr.response.includes("Action required") || xhr.response.includes("Cookie check") || xhr.response.includes("Authenticate in new window")) {
-                    const cookieErr = new Error("AI Studio security check required. This happens when the browser blocks platform cookies.");
+                    const cookieErr = new Error("Security check required. This happens when the browser blocks platform cookies.");
                     (cookieErr as any).isCookieError = true;
                     throw cookieErr;
                   }
@@ -204,7 +207,7 @@ export default function App() {
                 }
               } catch (parseError: any) {
                 console.error("Failed to parse server response:", xhr.response);
-                const isCookieMsg = parseError.isCookieError || parseError.message?.includes("AI Studio");
+                const isCookieMsg = parseError.isCookieError || parseError.message?.includes("Security Check");
                 
                 const msg = isCookieMsg 
                   ? "Authentication blocked. Please use 'Open in New Tab'." 
@@ -325,7 +328,7 @@ export default function App() {
     } catch (error: any) {
       console.error("Analysis error:", error);
       const errorMessage = error.message || "Unknown error occurred";
-      alert(`Analysis failed: ${errorMessage}\n\nPlease ensure your GEMINI_API_KEY is correctly set in your Render environment variables.`);
+      alert(`Analysis failed: ${errorMessage}\n\nPlease ensure your AI Engine is correctly configured in your server settings.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -450,9 +453,25 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-app-bg text-app-text-main font-sans selection:bg-app-accent/30 italic-serif:font-serif">
+    <div className="flex h-screen bg-app-bg text-app-text-main font-sans selection:bg-app-accent/30 italic-serif:font-serif relative">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="w-[260px] bg-app-surface border-r border-app-border flex flex-col z-10">
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 w-[260px] bg-app-surface border-r border-app-border flex flex-col z-50 transition-transform duration-300 transform lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="p-6 border-b border-app-border">
           <div className="flex items-center gap-3 mb-8">
             <div className="bg-app-accent p-2 rounded-lg shadow-app-accent/20 shadow-lg">
@@ -573,10 +592,17 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-app-bg">
+      <main className="flex-1 flex flex-col overflow-hidden bg-app-bg w-full">
         {/* Top bar */}
-        <header className="h-16 bg-app-surface border-b border-app-border flex items-center justify-between px-8">
-          <nav className="flex items-center gap-8 h-full">
+        <header className="h-16 bg-app-surface border-b border-app-border flex items-center justify-between px-4 lg:px-8 shrink-0">
+          <div className="flex items-center gap-4 flex-1">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <nav className="flex items-center gap-4 lg:gap-8 h-full overflow-x-auto no-scrollbar scroll-smooth">
             <button 
               onClick={() => setActiveTab("dashboard")}
               className={cn(
@@ -638,8 +664,17 @@ export default function App() {
                 External Prep
               </button>
             </nav>
+          </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+            <button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
+              title="Open Chat"
+            >
+              <MessageSquare className="w-6 h-6" />
+            </button>
+            <div className="hidden lg:flex items-center gap-4">
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-app-text-dim" />
               <input 
@@ -651,10 +686,11 @@ export default function App() {
               />
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* Dynamic Content */}
-        <div className="flex-1 overflow-y-auto p-10">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-10">
           {files.some(f => f.isCookieError) && (
             <motion.div 
               initial={{ height: 0, opacity: 0 }}
@@ -711,7 +747,7 @@ export default function App() {
                 <BrainCircuit className="w-8 h-8 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
               </div>
               <p className="mt-6 text-slate-900 font-bold text-lg">Analyzing Patterns...</p>
-              <p className="text-slate-400 text-sm italic">Gemini is clustering questions and mapping topics</p>
+              <p className="text-slate-400 text-sm italic">Intelligent Engine is clustering questions and mapping topics</p>
             </div>
           )}
 
@@ -730,8 +766,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-6">
-                    <div className="col-span-2 bg-app-surface p-8 rounded-2xl border border-app-border shadow-sm">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 bg-app-surface p-8 rounded-2xl border border-app-border shadow-sm">
                       <h3 className="text-[10px] font-bold uppercase tracking-widest text-app-text-dim mb-8">Topic Distribution</h3>
                       <div className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -795,7 +831,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {files.filter(f => f.status === "complete").slice(0, 3).map((f, i) => (
                       <div key={i} className="bg-app-surface p-6 rounded-xl border border-app-border shadow-sm hover:border-app-accent/50 transition-all">
                         <div className="flex items-center gap-3 mb-4">
@@ -1173,7 +1209,28 @@ export default function App() {
       </main>
 
       {/* Chat Panel */}
-      <aside className="w-96 bg-app-surface border-l border-app-border flex flex-col shadow-sm relative">
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsChatOpen(false)}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={cn(
+        "fixed lg:static inset-y-0 right-0 w-80 lg:w-96 bg-app-surface border-l border-app-border flex flex-col shadow-2xl lg:shadow-sm z-50 transition-transform duration-300 transform lg:translate-x-0",
+        isChatOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+      )}>
+        <button 
+          onClick={() => setIsChatOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-2 hover:bg-app-accent-muted rounded-full text-app-text-dim transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className="p-6 border-b border-app-border flex items-center justify-between bg-app-bg/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-app-accent rounded-xl flex items-center justify-center shadow-lg shadow-app-accent/10">
@@ -1267,7 +1324,7 @@ export default function App() {
               <Send className="w-4 h-4" />
             </button>
           </form>
-          <p className="text-[10px] text-center text-app-text-dim mt-4 uppercase tracking-tighter">Powered by Gemini Large Language Model</p>
+          <p className="text-[10px] text-center text-app-text-dim mt-4 uppercase tracking-tighter">Powered by Placement Analysis Intelligence</p>
         </div>
       </aside>
     </div>

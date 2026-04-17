@@ -15,7 +15,7 @@ async function startServer() {
 
   const aiKey = process.env.GEMINI_API_KEY || "";
   if (!aiKey && process.env.NODE_ENV === "production") {
-    console.warn("WARNING: GEMINI_API_KEY is not set in production environment!");
+    console.warn("WARNING: AI_API_KEY is not set in production environment!");
   }
   const ai = new GoogleGenAI({ apiKey: aiKey });
 
@@ -133,8 +133,8 @@ async function startServer() {
       const { prompt, config } = req.body;
       
       if (!process.env.GEMINI_API_KEY) {
-        console.error("Missing GEMINI_API_KEY in environment variables.");
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. Please add it to your Render dashboard." });
+        console.error("Missing AI_API_KEY in environment variables.");
+        return res.status(500).json({ error: "The AI Engine is not configured on the server. Please check your deployment settings." });
       }
 
       // Use the correct pattern from the gemini-api skill:
