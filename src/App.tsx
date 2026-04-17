@@ -310,9 +310,7 @@ export default function App() {
       `;
 
       const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
+        contents: prompt
       });
 
       // Robust JSON extraction
@@ -365,11 +363,7 @@ export default function App() {
       ${combinedText}`;
 
       const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { 
-          responseMimeType: "application/json"
-        }
+        contents: prompt
       });
 
       const data = JSON.parse(result.text);
@@ -442,11 +436,7 @@ export default function App() {
       `;
 
       const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          systemInstruction: "You are Placement Analyzer, a versatile placement preparation assistant. Your primary goal is to help users succeed in their careers. If the user's question relates to the uploaded documents, analysis, or mock tests, use that context as your priority. If the question is general (e.g., coding concepts, interview tips, general technology, or even unrelated conversational topics), use your internal knowledge to provide helpful and accurate answers. Never refuse a question just because it isn't in the provided PDF; instead, provide the best answer possible while mentioning if you didn't find specific details in their personal files."
-        }
+        contents: prompt
       });
 
       setMessages(prev => [...prev, { role: "ai", content: result.text || "I'm sorry, I couldn't process that query." }]);

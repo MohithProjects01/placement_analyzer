@@ -142,7 +142,7 @@ async function startServer() {
       
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: config || { responseMimeType: "application/json" }
+        generationConfig: config || {}
       });
       
       const response = await result.response;
