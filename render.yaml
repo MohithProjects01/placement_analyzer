@@ -1,0 +1,18 @@
+# Render Blueprint for the Placement Analyzer Full-Stack App
+services:
+  - type: web
+    name: placement-analyzer-api
+    runtime: node
+    plan: free # Use 'free' or omit for default. Render's free tier is fine for most students.
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false # You must set this manually in the Render Dashboard
+      - key: APP_URL
+        fromService:
+          type: web
+          name: placement-analyzer-api
+          property: host
