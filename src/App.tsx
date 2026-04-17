@@ -315,11 +315,18 @@ export default function App() {
         config: { responseMimeType: "application/json" }
       });
 
-      const parsedAnalysis = JSON.parse(result.text);
+      // Robust JSON extraction
+      let jsonStr = result.text.trim();
+      if (jsonStr.includes("```")) {
+        jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "").trim();
+      }
+      
+      const parsedAnalysis = JSON.parse(jsonStr);
       setAnalysis(parsedAnalysis);
       setActiveTab("dashboard");
     } catch (error) {
       console.error("Analysis error:", error);
+      alert("Analysis failed. Please ensure your Gemini API key is valid and check the browser console for details.");
     } finally {
       setIsAnalyzing(false);
     }

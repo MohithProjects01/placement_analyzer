@@ -13,7 +13,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const aiKey = process.env.GEMINI_API_KEY || "";
+  if (!aiKey && process.env.NODE_ENV === "production") {
+    console.warn("WARNING: GEMINI_API_KEY is not set in production environment!");
+  }
+  const ai = new GoogleGenAI({ apiKey: aiKey });
 
   // Configure multer for file uploads - use memory usage for stability in this environment
   const storage = multer.memoryStorage();
@@ -127,15 +131,26 @@ async function startServer() {
   app.post("/api/ai/generate", async (req, res) => {
     try {
       const { prompt, config } = req.body;
-      const result = await (ai as any).models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: config || { responseMimeType: "application/json" }
+      
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      }
+
+      // Use the standard generative AI model pattern
+      const modelName = "gemini-1.5-flash"; // More stable name across environments
+      const model = ai.getGenerativeModel({ model: modelName });
+      
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: config || { responseMimeType: "application/json" }
       });
-      res.json({ text: result.text });
+      
+      const response = await result.response;
+      const text = response.text();
+      res.json({ text: text });
     } catch (error: any) {
       console.error("AI Error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: `AI Processing failed: ${error.message}` });
     }
   });
 
