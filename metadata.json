@@ -1,0 +1,6 @@
+{
+  "name": "Placement Analyzer",
+  "description": "An AI-powered placement preparation platform that analyzes PDFs (papers, topics, company trends) to provide data-driven insights, topic distribution, and intelligent pattern clustering for students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
