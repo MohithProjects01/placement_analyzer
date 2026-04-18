@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { 
@@ -82,6 +82,7 @@ export default function App() {
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string }[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isChatting, setIsChatting] = useState(false);
@@ -89,6 +90,34 @@ export default function App() {
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Filtered analysis data based on search query
+  const filteredAnalysis = useMemo(() => {
+    if (!analysis) return null;
+    if (!searchQuery.trim()) return analysis;
+
+    const query = searchQuery.toLowerCase();
+    return {
+      ...analysis,
+      topics: analysis.topics.filter(t => t.name.toLowerCase().includes(query)),
+      difficulty: analysis.difficulty, // Pie chart doesn't filter well, but labels could
+      repeats: analysis.repeats.filter(r => 
+        r.pattern.toLowerCase().includes(query) || 
+        r.examples.some(ex => ex.toLowerCase().includes(query))
+      ),
+      importantNotes: analysis.importantNotes.filter(n => n.toLowerCase().includes(query)),
+      links: (analysis.links || []).filter(l => 
+        l.title.toLowerCase().includes(query) || 
+        l.url.toLowerCase().includes(query) ||
+        l.context.toLowerCase().includes(query)
+      ),
+      externalQuestions: (analysis.externalQuestions || []).filter(q => 
+        q.question.toLowerCase().includes(query) || 
+        q.topic.toLowerCase().includes(query) ||
+        q.similar_to.toLowerCase().includes(query)
+      )
+    };
+  }, [analysis, searchQuery]);
 
   // Persistence Hooks
   useEffect(() => {
@@ -114,20 +143,35 @@ export default function App() {
   const ai = React.useMemo(() => ({
     models: {
       generateContent: async (args: any) => {
-        const response = await fetch(`${apiBase}/api/ai/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            prompt: args.contents, 
-            config: args.config 
-          })
-        });
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || 'AI request failed');
+        try {
+          const response = await fetch(`${apiBase}/api/ai/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              prompt: args.contents, 
+              config: args.config 
+            })
+          });
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            let errorMsg = errData.error || 'AI request failed';
+            
+            // Helpful hint for split deployments
+            if (response.status === 404 && !apiBase && (window.location.hostname.includes('netlify') || window.location.hostname.includes('vercel'))) {
+              errorMsg = "API not found. If you deployed frontend and backend separately, please set VITE_API_URL in your dashboard.";
+            }
+            
+            throw new Error(errorMsg);
+          }
+          const data = await response.json();
+          return { text: data.text };
+        } catch (err: any) {
+          console.error("Fetch error:", err);
+          if (err.message.includes('Failed to fetch')) {
+            throw new Error("Could not connect to the server. Please check your internet or VITE_API_URL settings.");
+          }
+          throw err;
         }
-        const data = await response.json();
-        return { text: data.text };
       }
     }
   }), [apiBase]);
@@ -370,7 +414,13 @@ export default function App() {
         contents: prompt
       });
 
-      const data = JSON.parse(result.text);
+      // Robust JSON extraction
+      let jsonStr = result.text.trim();
+      if (jsonStr.includes("```")) {
+        jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "").trim();
+      }
+
+      const data = JSON.parse(jsonStr);
       if (data.questions) {
         setMockTest(data.questions);
         setRevealedAnswers({});
@@ -595,7 +645,7 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-hidden bg-app-bg w-full">
         {/* Top bar */}
         <header className="h-16 bg-app-surface border-b border-app-border flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
@@ -751,7 +801,7 @@ export default function App() {
             </div>
           )}
 
-          {analysis && !isAnalyzing && (
+          {filteredAnalysis && !isAnalyzing && (
             <div className="space-y-8 max-w-6xl mx-auto">
               {activeTab === "dashboard" && (
                 <motion.div 
@@ -771,7 +821,7 @@ export default function App() {
                       <h3 className="text-[10px] font-bold uppercase tracking-widest text-app-text-dim mb-8">Topic Distribution</h3>
                       <div className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analysis.topics}>
+                          <BarChart data={filteredAnalysis.topics}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2A2A2E" />
                             <XAxis 
                               dataKey="name" 
@@ -785,7 +835,7 @@ export default function App() {
                               contentStyle={{ backgroundColor: '#151517', borderRadius: '12px', border: '1px solid #2A2A2E', color: '#E5E7EB' }}
                             />
                             <Bar dataKey="value" radius={[4, 4, 0, 0]} opacity={0.8}>
-                              {analysis.topics.map((_, index) => (
+                              {filteredAnalysis.topics.map((_, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Bar>
@@ -801,14 +851,14 @@ export default function App() {
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
-                                data={analysis.difficulty}
+                                data={filteredAnalysis.difficulty}
                                 innerRadius={60}
                                 outerRadius={80}
                                 paddingAngle={5}
                                 dataKey="count"
                                 stroke="#151517"
                               >
-                                {analysis.difficulty.map((_, index) => (
+                                {filteredAnalysis.difficulty.map((_, index) => (
                                   <Cell key={`cell-${index}`} fill={["#10B981", "#F59E0B", "#EF4444"][index % 3]} />
                                 ))}
                               </Pie>
@@ -817,7 +867,7 @@ export default function App() {
                           </ResponsiveContainer>
                         </div>
                         <div className="space-y-3 mt-8">
-                          {analysis.difficulty.map((diff, i) => (
+                          {filteredAnalysis.difficulty.map((diff, i) => (
                             <div key={i} className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className={cn("w-2 h-2 rounded-full", ["bg-emerald-500", "bg-amber-500", "bg-red-500"][i % 3])} />
@@ -857,7 +907,7 @@ export default function App() {
                 >
                   <h2 className="text-2xl font-black text-app-text-main">Pattern Frequency Analysis</h2>
                   <div className="grid gap-4">
-                    {analysis.repeats.map((pattern, idx) => (
+                    {filteredAnalysis.repeats.map((pattern, idx) => (
                       <div key={idx} className="bg-app-surface p-6 rounded-2xl border border-app-border shadow-sm">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex gap-4">
@@ -902,6 +952,11 @@ export default function App() {
                         </AnimatePresence>
                       </div>
                     ))}
+                    {filteredAnalysis.repeats.length === 0 && (
+                      <div className="text-center py-20 opacity-40">
+                        <p className="text-app-text-dim italic">No patterns match your search query.</p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -928,7 +983,7 @@ export default function App() {
                         Strategic Focus Areas
                       </h3>
                       <div className="grid gap-4">
-                        {analysis.importantNotes.map((note, idx) => (
+                        {filteredAnalysis.importantNotes.map((note, idx) => (
                           <div key={idx} className="flex items-start gap-4 group">
                             <div className="w-6 h-6 rounded-full border-2 border-app-border flex-shrink-0 flex items-center justify-center mt-0.5 group-hover:border-app-accent transition-colors">
                               <span className="text-[10px] font-bold text-app-text-dim group-hover:text-app-accent">{idx + 1}</span>
@@ -936,6 +991,9 @@ export default function App() {
                             <p className="text-app-text-dim leading-relaxed italic-serif:font-serif group-hover:text-app-text-main transition-colors">{note}</p>
                           </div>
                         ))}
+                        {filteredAnalysis.importantNotes.length === 0 && (
+                          <p className="text-app-text-dim italic opacity-40 text-center py-4">No notes match your search.</p>
+                        )}
                       </div>
                     </section>
 
@@ -943,7 +1001,7 @@ export default function App() {
                       <h3 className="text-[10px] font-bold uppercase tracking-widest text-app-accent mb-4 opacity-70">Company Specific Prediction</h3>
                       <p className="text-app-text-main italic italic-serif:font-serif leading-relaxed">
                         Based on the pattern trend analysis, there is a <span className="text-app-accent font-bold">78% probability</span> of seeing variation on 
-                        {analysis.topics[0]?.name} and {analysis.topics[1]?.name || "linked concepts"} in your upcoming rounds.
+                        {filteredAnalysis.topics[0]?.name || "analyzed topics"} and {filteredAnalysis.topics[1]?.name || "linked concepts"} in your upcoming rounds.
                       </p>
                     </section>
                   </div>
@@ -1084,9 +1142,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  {analysis.links && analysis.links.length > 0 ? (
+                  {filteredAnalysis.links && filteredAnalysis.links.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {analysis.links.map((link, idx) => (
+                      {filteredAnalysis.links.map((link, idx) => (
                         <div key={idx} className="bg-app-surface p-6 rounded-2xl border border-app-border group hover:border-app-accent/30 transition-all hover:translate-y-[-2px] shadow-sm">
                           <div className="flex items-start justify-between mb-4">
                             <div className="w-10 h-10 bg-app-bg rounded-xl flex items-center justify-center border border-app-border group-hover:border-app-accent/20 transition-colors">
@@ -1120,7 +1178,7 @@ export default function App() {
                       </div>
                       <h3 className="text-xl font-bold text-app-text-main mb-2">No Links Found</h3>
                       <p className="text-app-text-dim text-sm max-w-sm mx-auto leading-relaxed italic-serif:font-serif">
-                        No external URLs or resource links were identified in the analyzed documents.
+                        {searchQuery ? "No links match your search." : "No external URLs or resource links were identified in the analyzed documents."}
                       </p>
                     </div>
                   )}
@@ -1139,10 +1197,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  {analysis.externalQuestions && analysis.externalQuestions.length > 0 ? (
+                  {filteredAnalysis.externalQuestions && filteredAnalysis.externalQuestions.length > 0 ? (
                     <div className="space-y-12">
                       {Object.entries(
-                        analysis.externalQuestions.reduce((acc, eq) => {
+                        filteredAnalysis.externalQuestions.reduce((acc, eq) => {
                           const topic = eq.topic || "General";
                           if (!acc[topic]) acc[topic] = [];
                           acc[topic].push(eq);
@@ -1191,13 +1249,9 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-app-surface p-20 rounded-2xl border border-app-border border-dashed text-center flex flex-col items-center">
-                      <div className="w-16 h-16 bg-app-bg rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                        <TrendingUp className="w-8 h-8 text-app-border" />
-                      </div>
-                      <h3 className="text-xl font-bold text-app-text-main mb-2">Analysis Needed</h3>
-                      <p className="text-app-text-dim text-sm max-w-sm mx-auto leading-relaxed italic-serif:font-serif">
-                        Run the AI analysis to discover similar questions from external coding platforms and career rounds.
+                    <div className="text-center py-20 opacity-40">
+                      <p className="text-app-text-dim italic">
+                        {searchQuery ? "No practice questions match your search query." : "Run the AI analysis to discover similar questions from external coding platforms and career rounds."}
                       </p>
                     </div>
                   )}
@@ -1251,11 +1305,53 @@ export default function App() {
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
-            <button className="p-2 hover:bg-app-bg rounded-lg transition-colors border border-transparent hover:border-app-border">
-              <Settings className="w-4 h-4 text-app-text-dim" />
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className={cn(
+                "p-2 rounded-lg transition-colors border border-transparent",
+                showSettings ? "bg-app-accent-muted border-app-accent/30 text-app-accent" : "hover:bg-app-bg hover:border-app-border text-app-text-dim"
+              )}
+              title="Settings"
+            >
+              <Settings className={cn("w-4 h-4", showSettings && "animate-spin-slow")} />
             </button>
           </div>
         </div>
+
+        {/* Settings Overlay/Menu */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-24 right-6 w-64 bg-app-surface border border-app-border rounded-xl shadow-2xl z-[60] p-4 space-y-4"
+            >
+              <h4 className="text-xs font-black uppercase tracking-widest text-app-accent">Assistant Settings</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2 hover:bg-app-bg rounded-lg transition-colors cursor-pointer group" onClick={clearChatHistory}>
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-xs font-bold text-app-text-main">Wipe History</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-app-text-dim group-hover:translate-x-1 transition-transform" />
+                </div>
+                <div className="flex items-center justify-between p-2 hover:bg-app-bg rounded-lg transition-colors cursor-pointer group" onClick={() => exportNotes()}>
+                  <div className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-app-accent" />
+                    <span className="text-xs font-bold text-app-text-main">Export Patterns</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-app-text-dim group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-app-border">
+                <p className="text-[9px] text-app-text-dim leading-relaxed">
+                  Configuration is currently locked to <span className="text-app-accent">Performance Mode</span>.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-app-bg/10">
           {messages.length === 0 && (
