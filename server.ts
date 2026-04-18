@@ -9,6 +9,14 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import fs from "fs";
 
+// Process level resilience
+process.on("uncaughtException", (err) => {
+  console.error("FATAL: Uncaught Exception:", err);
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("FATAL: Unhandled Rejection at:", promise, "reason:", reason);
+});
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -33,6 +41,16 @@ async function startServer() {
     credentials: true
   }));
   app.use(express.json());
+
+  console.log(`Starting server in ${process.env.NODE_ENV || "development"} mode`);
+
+  // Simple Request Logger
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    }
+    next();
+  });
 
   // API to upload and parse PDF
   app.post("/api/upload", (req, res, next) => {
@@ -164,6 +182,15 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("SYSTEM_ERROR:", err);
+    res.status(500).json({ 
+      error: "A system-level error occurred. The intelligence engine is stabilizing.",
+      message: err.message
+    });
   });
 
   // Vite middleware for development

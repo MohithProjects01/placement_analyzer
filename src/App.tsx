@@ -140,7 +140,8 @@ export default function App() {
   }, [messages, isHistoryLoaded]);
 
   // AI Intelligence Setup - Keeps API Key Secure on the Backend (Render)
-  const apiBase = (import.meta as any).env.VITE_API_URL || "";
+  const rawApiUrl = (import.meta as any).env.VITE_API_URL;
+  const apiBase = (rawApiUrl && rawApiUrl !== "undefined" && rawApiUrl !== "null") ? rawApiUrl : "";
   const ai = React.useMemo(() => ({
     models: {
       generateContent: async (args: any) => {
@@ -214,7 +215,8 @@ export default function App() {
         // We use XMLHttpRequest here to get progress events for each file
         await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          const apiUrl = (import.meta as any).env.VITE_API_URL || "";
+          const rawUrl = (import.meta as any).env.VITE_API_URL;
+          const apiUrl = (rawUrl && rawUrl !== "undefined" && rawUrl !== "null") ? rawUrl : "";
           xhr.open("POST", `${apiUrl}/api/upload`);
           
           // CORS settings - set to false for standard manual hosting
@@ -294,6 +296,13 @@ export default function App() {
                     errorMsg = "Authentication lost. Please refresh or open in a new tab.";
                     isCookieMsg = true;
                     setHasSessionError(true);
+                  }
+                  else if (xhr.status === 404) {
+                    if (!apiUrl && (window.location.hostname.includes('netlify') || window.location.hostname.includes('vercel'))) {
+                      errorMsg = "API not found (404). If you deployed to Netlify/Render, ensure you set VITE_API_URL in your dashboard.";
+                    } else {
+                      errorMsg = "Upload endpoint not found (404). Please ensure the backend is running.";
+                    }
                   }
                   else errorMsg = `Server error (${xhr.status}). Please try again later.`;
                 }
