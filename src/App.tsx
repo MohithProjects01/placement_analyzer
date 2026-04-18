@@ -92,6 +92,7 @@ export default function App() {
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Filtered analysis data based on search query
   const filteredAnalysis = useMemo(() => {
@@ -533,7 +534,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-app-bg text-app-text-main font-sans selection:bg-app-accent/30 italic-serif:font-serif relative">
+    <div className="flex h-svh bg-app-bg text-app-text-main font-sans selection:bg-app-accent/30 italic-serif:font-serif relative">
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -570,7 +571,7 @@ export default function App() {
           </label>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 no-scrollbar">
           <div className="flex items-center justify-between px-2 mb-2">
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-app-text-dim">Your Documents</h2>
             <span className="text-[10px] bg-app-bg text-app-accent px-2 py-0.5 rounded-full font-bold border border-app-border">
@@ -674,59 +675,95 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden bg-app-bg w-full">
         {/* Top bar */}
-        <header className="h-16 bg-app-surface border-b border-app-border flex items-center justify-between px-4 lg:px-8 shrink-0">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
+        <header className="h-16 lg:h-16 bg-app-surface border-b border-app-border flex items-center justify-between px-3 lg:px-8 shrink-0 relative">
+          <AnimatePresence>
+            {isSearchOpen && (
+              <motion.div 
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                exit={{ opacity: 0, scaleY: 0 }}
+                className="absolute inset-x-0 top-full bg-app-surface border-b border-app-border p-4 z-50 sm:hidden origin-top"
+              >
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-app-text-dim" />
+                  <input 
+                    type="text" 
+                    placeholder="Search materials..." 
+                    className="w-full bg-app-bg border border-app-border rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-1 focus:ring-app-accent transition-all outline-none text-app-text-main"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  <button 
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-app-accent-muted rounded-full"
+                  >
+                    <X className="w-4 h-4 text-app-text-dim" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex items-center gap-2 lg:gap-4 flex-1 min-w-0 h-full">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
+              className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors shrink-0"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            <nav className="flex items-center gap-4 lg:gap-8 h-full overflow-x-auto no-scrollbar scroll-smooth">
-            <button 
-              onClick={() => setActiveTab("dashboard")}
-              className={cn(
-                "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
-                activeTab === "dashboard" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
-              )}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Insights Dashboard
-            </button>
-            <button 
-              onClick={() => setActiveTab("patterns")}
-              className={cn(
-                "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
-                activeTab === "patterns" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
-              )}
-            >
-              <History className="w-4 h-4" />
-              Pattern Analysis
-            </button>
+            <nav className="flex items-center gap-1 lg:gap-8 h-full overflow-x-auto no-scrollbar scroll-smooth mask-fade-right">
+              <button 
+                onClick={() => setActiveTab("dashboard")}
+                className={cn(
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
+                  activeTab === "dashboard" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
+                )}
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Insights Dashboard</span>
+                <span className="sm:hidden">Insights</span>
+              </button>
+              <button 
+                onClick={() => setActiveTab("patterns")}
+                className={cn(
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
+                  activeTab === "patterns" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
+                )}
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">Pattern Analysis</span>
+                <span className="sm:hidden">Patterns</span>
+              </button>
               <button 
                 onClick={() => setActiveTab("notes")}
                 className={cn(
-                  "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
                   activeTab === "notes" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
                 )}
               >
                 <BookOpen className="w-4 h-4" />
-                Auto Notes
+                <span className="hidden sm:inline">Auto Notes</span>
+                <span className="sm:hidden">Notes</span>
               </button>
               <button 
                 onClick={() => setActiveTab("mocktest")}
                 className={cn(
-                  "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
                   activeTab === "mocktest" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
                 )}
               >
                 <ClipboardCheck className="w-4 h-4" />
-                Mock Test
+                <span className="hidden sm:inline">Mock Test</span>
+                <span className="sm:hidden">Mock</span>
               </button>
               <button 
                 onClick={() => setActiveTab("links")}
                 className={cn(
-                  "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
                   activeTab === "links" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
                 )}
               >
@@ -736,38 +773,45 @@ export default function App() {
               <button 
                 onClick={() => setActiveTab("external")}
                 className={cn(
-                  "h-full px-1 flex items-center gap-2 text-sm font-bold border-b-2 transition-all",
+                  "h-full px-3 flex items-center gap-2 text-xs lg:text-sm font-bold border-b-2 transition-all shrink-0",
                   activeTab === "external" ? "border-app-accent text-app-accent" : "border-transparent text-app-text-dim hover:text-app-text-main"
                 )}
               >
                 <BrainCircuit className="w-4 h-4" />
-                External Prep
+                Preps
               </button>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+          <div className="flex items-center gap-1 lg:gap-4 shrink-0 px-2 lg:px-0">
+            <button 
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="sm:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
+              title="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setIsChatOpen(!isChatOpen)}
               className="lg:hidden p-2 hover:bg-app-accent-muted rounded-lg text-app-accent transition-colors"
               title="Open Chat"
             >
-              <MessageSquare className="w-6 h-6" />
+              <MessageSquare className="w-5 h-5" />
             </button>
-            <div className="hidden lg:flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-app-text-dim" />
-              <input 
-                type="text" 
-                placeholder="Search across documents..." 
-                className="bg-app-bg border border-app-border rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-app-accent transition-all outline-none text-app-text-main"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="hidden sm:flex items-center gap-4">
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-app-text-dim" />
+                <input 
+                  type="text" 
+                  placeholder="Search materials..." 
+                  className="bg-app-bg border border-app-border rounded-full pl-9 pr-4 py-1.5 text-xs w-32 md:w-48 lg:w-64 focus:ring-1 focus:ring-app-accent transition-all outline-none text-app-text-main"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
         {/* Dynamic Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-10">
@@ -841,17 +885,17 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-8"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-3xl font-black tracking-tight text-app-text-main">Placement Intelligence</h2>
-                      <p className="text-app-text-dim italic mt-1 font-medium italic-serif:font-serif">Analysis based on {files.filter(f => f.status === "complete").length} documents</p>
+                      <h2 className="text-xl lg:text-3xl font-black tracking-tight text-app-text-main">Placement Intelligence</h2>
+                      <p className="text-app-text-dim italic mt-1 text-xs lg:text-sm font-medium italic-serif:font-serif truncate">Analysis: {files.filter(f => f.status === "complete").length} items</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-app-surface p-8 rounded-2xl border border-app-border shadow-sm">
+                    <div className="lg:col-span-2 bg-app-surface p-5 lg:p-8 rounded-2xl border border-app-border shadow-sm">
                       <h3 className="text-[10px] font-bold uppercase tracking-widest text-app-text-dim mb-8">Topic Distribution</h3>
-                      <div className="h-[350px]">
+                      <div className="h-[300px] lg:h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={filteredAnalysis.topics}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2A2A2E" />
@@ -876,7 +920,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="bg-app-surface p-8 rounded-2xl border border-app-border shadow-sm flex flex-col">
+                    <div className="bg-app-surface p-5 lg:p-8 rounded-2xl border border-app-border shadow-sm flex flex-col">
                       <h3 className="text-[10px] font-bold uppercase tracking-widest text-app-text-dim mb-8">Difficulty Spread</h3>
                       <div className="flex-1 flex flex-col justify-center">
                         <div className="h-[200px]">
@@ -940,10 +984,10 @@ export default function App() {
                   <h2 className="text-2xl font-black text-app-text-main">Pattern Frequency Analysis</h2>
                   <div className="grid gap-4">
                     {filteredAnalysis.repeats.map((pattern, idx) => (
-                      <div key={idx} className="bg-app-surface p-6 rounded-2xl border border-app-border shadow-sm">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex gap-4">
-                            <div className="bg-app-accent-muted text-app-accent w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl border border-app-accent/20">
+                      <div key={idx} className="bg-app-surface p-5 lg:p-6 rounded-2xl border border-app-border shadow-sm">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-app-accent-muted text-app-accent w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center font-black text-lg lg:text-xl border border-app-accent/20">
                               {pattern.frequency}
                             </div>
                             <div>
@@ -997,15 +1041,15 @@ export default function App() {
                 <motion.div 
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-app-surface p-12 rounded-3xl border border-app-border shadow-xl max-w-3xl mx-auto min-h-[600px] relative overflow-hidden text-app-text-main"
+                  className="bg-app-surface p-6 lg:p-12 rounded-3xl border border-app-border shadow-xl max-w-3xl mx-auto min-h-[500px] lg:min-h-[600px] relative overflow-hidden text-app-text-main"
                 >
                   {/* Paper Texture Decor */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-app-bg -mr-16 -mt-16 rotate-45 border-b border-l border-app-border" />
+                  <div className="absolute top-0 right-0 w-24 h-24 lg:w-32 lg:h-32 bg-app-bg -mr-12 lg:-mr-16 -mt-12 lg:-mt-16 rotate-45 border-b border-l border-app-border" />
                   
-                  <div className="relative mb-12">
+                  <div className="relative mb-8 lg:mb-12">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-app-accent mb-2">Automated Study Plan</p>
-                    <h2 className="text-4xl font-black text-app-text-main tracking-tight">Placement Summary</h2>
-                    <div className="h-1 w-20 bg-app-accent mt-4 rounded-full" />
+                    <h2 className="text-2xl lg:text-4xl font-black text-app-text-main tracking-tight">Placement Summary</h2>
+                    <div className="h-1 w-16 lg:w-20 bg-app-accent mt-3 lg:mt-4 rounded-full" />
                   </div>
 
                   <div className="space-y-12">
@@ -1058,25 +1102,25 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="max-w-4xl mx-auto space-y-8"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-3xl font-black text-app-text-main">Practice Arena</h2>
-                      <p className="text-app-text-dim text-sm font-medium mt-1">Simulate the real test environment based on your current materials.</p>
+                      <h2 className="text-xl lg:text-3xl font-black tracking-tight text-app-text-main">Practice Arena</h2>
+                      <p className="text-app-text-dim text-xs lg:text-sm font-medium mt-1">Simulate the real test environment based on your current materials.</p>
                     </div>
                     <button 
                       onClick={generateMockTest}
                       disabled={isGeneratingTest}
-                      className="bg-app-accent text-app-bg px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-xl shadow-app-accent/20 active:scale-95 group"
+                      className="w-full sm:w-auto bg-app-accent text-app-bg px-5 py-2.5 lg:px-6 lg:py-3 rounded-xl font-black text-xs lg:text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-xl shadow-app-accent/20 active:scale-95 group"
                     >
-                      <Zap className="w-5 h-5 group-hover:animate-pulse" />
-                      {isGeneratingTest ? "Crafting Questions..." : "Generate New Blitz Test"}
+                      <Zap className="w-4 h-4 lg:w-5 lg:h-5 group-hover:animate-pulse" />
+                      {isGeneratingTest ? "Crafting..." : "Blitz Test"}
                     </button>
                   </div>
 
                   {mockTest && mockTest.length > 0 ? (
                     <div className="space-y-6">
                       {mockTest.map((q, idx) => (
-                        <div key={q.id} className="bg-app-surface p-8 rounded-2xl border border-app-border shadow-sm group hover:border-app-accent/30 transition-colors">
+                        <div key={q.id} className="bg-app-surface p-5 lg:p-8 rounded-2xl border border-app-border shadow-sm group hover:border-app-accent/30 transition-colors">
                           <div className="flex items-start gap-4 mb-6">
                             <span className="w-8 h-8 rounded-lg bg-app-bg border border-app-border flex items-center justify-center text-xs font-black text-app-accent shadow-sm">
                               {idx + 1}
@@ -1149,11 +1193,11 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-app-surface p-20 rounded-2xl border border-app-border border-dashed text-center flex flex-col items-center">
-                      <div className="w-16 h-16 bg-app-bg rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                        <ClipboardCheck className="w-8 h-8 text-app-border" />
+                    <div className="bg-app-surface p-12 lg:p-20 rounded-2xl border border-app-border border-dashed text-center flex flex-col items-center">
+                      <div className="w-12 h-12 lg:w-16 lg:h-16 bg-app-bg rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                        <ClipboardCheck className="w-6 h-6 lg:w-8 lg:h-8 text-app-border" />
                       </div>
-                      <h3 className="text-xl font-bold text-app-text-main mb-2">No Test Generated</h3>
+                      <h3 className="text-lg lg:text-xl font-bold text-app-text-main mb-2">No Test Generated</h3>
                       <p className="text-app-text-dim text-sm max-w-sm mx-auto leading-relaxed italic-serif:font-serif">
                         Analyze your documents first, then click the button above to create a custom practice blitz.
                       </p>
@@ -1167,17 +1211,17 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className="max-w-4xl mx-auto space-y-8"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-3xl font-black text-app-text-main">External Resources</h2>
-                      <p className="text-app-text-dim text-sm font-medium mt-1">Found links and external sources mentioned in your papers.</p>
+                      <h2 className="text-xl lg:text-3xl font-black tracking-tight text-app-text-main">External Resources</h2>
+                      <p className="text-app-text-dim text-xs lg:text-sm font-medium mt-1">Found links and external sources mentioned in your papers.</p>
                     </div>
                   </div>
 
                   {filteredAnalysis.links && filteredAnalysis.links.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {filteredAnalysis.links.map((link, idx) => (
-                        <div key={idx} className="bg-app-surface p-6 rounded-2xl border border-app-border group hover:border-app-accent/30 transition-all hover:translate-y-[-2px] shadow-sm">
+                        <div key={idx} className="bg-app-surface p-5 lg:p-6 rounded-2xl border border-app-border group hover:border-app-accent/30 transition-all hover:translate-y-[-2px] shadow-sm">
                           <div className="flex items-start justify-between mb-4">
                             <div className="w-10 h-10 bg-app-bg rounded-xl flex items-center justify-center border border-app-border group-hover:border-app-accent/20 transition-colors">
                               <ExternalLink className="w-5 h-5 text-app-accent" />
@@ -1186,7 +1230,7 @@ export default function App() {
                               href={link.url.startsWith('http') ? link.url : `https://${link.url}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="bg-app-accent text-app-bg text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5"
+                              className="bg-app-accent text-app-bg text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5"
                             >
                               Open <ChevronRight className="w-3 h-3" />
                             </a>
@@ -1247,9 +1291,9 @@ export default function App() {
                           
                           <div className="grid grid-cols-1 gap-6">
                             {questions?.map((eq, idx) => (
-                              <div key={idx} className="bg-app-surface p-8 rounded-2xl border border-app-border group hover:border-app-accent/30 transition-all shadow-sm">
-                                <div className="flex items-start gap-6">
-                                  <div className="w-12 h-12 bg-app-bg rounded-xl flex items-center justify-center border border-app-border group-hover:border-app-accent/20 transition-colors shrink-0">
+                              <div key={idx} className="bg-app-surface p-5 lg:p-8 rounded-2xl border border-app-border group hover:border-app-accent/30 transition-all shadow-sm">
+                                <div className="flex flex-col sm:flex-row items-start gap-4 lg:gap-6">
+                                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-app-bg rounded-xl flex items-center justify-center border border-app-border group-hover:border-app-accent/20 transition-colors shrink-0">
                                     <BrainCircuit className="w-6 h-6 text-app-accent" />
                                   </div>
                                   <div className="flex-1">

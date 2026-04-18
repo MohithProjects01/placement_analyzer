@@ -1,5 +1,7 @@
 {
-  "name": "react-example",
+  "name": "placement-analyzer",
+  "description": "AI-powered placement preparation platform for PDF analysis and data-driven student insights.",
+  "homepage": "https://placement-analyzer.netlify.app/",
   "private": true,
   "version": "0.0.0",
   "type": "module",

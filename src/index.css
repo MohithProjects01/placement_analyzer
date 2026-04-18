@@ -65,4 +65,17 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  /* Mobile dynamic height fix */
+  .min-h-svh {
+    min-height: 100svh;
+  }
+  .h-svh {
+    height: 100svh;
+  }
+
+  /* Scroll indicators */
+  .mask-fade-right {
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
 }
