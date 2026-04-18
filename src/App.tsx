@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Trash2,
   Menu,
+  RefreshCw,
 } from "lucide-react";
 import { 
   BarChart, 
@@ -473,6 +474,13 @@ export default function App() {
     if (window.confirm("Are you sure you want to clear your entire chat history?")) {
       setMessages([]);
       localStorage.removeItem("placement_analyzer_chat_history");
+    }
+  };
+
+  const performHardReset = () => {
+    if (window.confirm("CRITICAL RESET: This will wipe ALL uploaded files, analysis data, and chat history. The app will reload. Continue?")) {
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -1364,6 +1372,13 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <Download className="w-3.5 h-3.5 text-app-accent" />
                     <span className="text-xs font-bold text-app-text-main">Export Patterns</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-app-text-dim group-hover:translate-x-1 transition-transform" />
+                </div>
+                <div className="flex items-center justify-between p-2 hover:bg-red-500/5 hover:text-red-400 rounded-lg transition-colors cursor-pointer group" onClick={performHardReset}>
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 text-red-500" />
+                    <span className="text-xs font-bold text-app-text-main">Factory Reset</span>
                   </div>
                   <ChevronRight className="w-3 h-3 text-app-text-dim group-hover:translate-x-1 transition-transform" />
                 </div>
