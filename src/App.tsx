@@ -83,6 +83,7 @@ export default function App() {
   const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [hasSessionError, setHasSessionError] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string }[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isChatting, setIsChatting] = useState(false);
@@ -153,6 +154,15 @@ export default function App() {
             })
           });
           if (!response.ok) {
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("text/html")) {
+              const htmlText = await response.text();
+              if (htmlText.includes("Cookie check") || htmlText.includes("Action required") || htmlText.includes("ai_studio_favicon")) {
+                setHasSessionError(true);
+                throw new Error("SESSION_EXPIRED: Your security session has expired or is blocked. Please open original tab or use 'Open in New Tab'.");
+              }
+            }
+
             const errData = await response.json().catch(() => ({}));
             let errorMsg = errData.error || 'AI request failed';
             
@@ -225,14 +235,14 @@ export default function App() {
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
-                // Check if response is HTML (likely Proxy Cookie Check redirect)
+                // Check if response is HTML (likely Proxy Cookie Check redirect or Auth required)
                 if (typeof xhr.response === 'string' && (xhr.response.trim().startsWith("<!doctype") || xhr.response.trim().startsWith("<html"))) {
-                  if (xhr.response.includes("Action required") || xhr.response.includes("Cookie check") || xhr.response.includes("Authenticate in new window")) {
-                    const cookieErr = new Error("Security check required. This happens when the browser blocks platform cookies.");
+                  if (xhr.response.includes("Action required") || xhr.response.includes("Cookie check") || xhr.response.includes("Authenticate in new window") || xhr.response.includes("ai_studio_favicon")) {
+                    const cookieErr = new Error("Platform security check required. This happens when the browser blocks platform cookies.");
                     (cookieErr as any).isCookieError = true;
                     throw cookieErr;
                   }
-                  throw new Error("Server returned an HTML page instead of JSON.");
+                  throw new Error("Server returned an HTML page instead of JSON. Check your API endpoint.");
                 }
 
                 const data = JSON.parse(xhr.response);
@@ -251,7 +261,8 @@ export default function App() {
                 }
               } catch (parseError: any) {
                 console.error("Failed to parse server response:", xhr.response);
-                const isCookieMsg = parseError.isCookieError || parseError.message?.includes("Security Check");
+                const isCookieMsg = parseError.isCookieError || parseError.message?.includes("Security Check") || parseError.message?.includes("Cookie check");
+                if (isCookieMsg) setHasSessionError(true);
                 
                 const msg = isCookieMsg 
                   ? "Authentication blocked. Please use 'Open in New Tab'." 
@@ -268,9 +279,10 @@ export default function App() {
               let isCookieMsg = false;
               
               // Sometimes even non-200 responses can be cookie checks
-              if (typeof xhr.response === 'string' && xhr.response.includes("Cookie check")) {
+              if (typeof xhr.response === "string" && (xhr.response.includes("Cookie check") || xhr.response.includes("Action required") || xhr.response.includes("ai_studio_favicon"))) {
                 errorMsg = "Browser blocked platform cookies. Try opening in a new tab.";
                 isCookieMsg = true;
+                setHasSessionError(true);
               } else {
                 try {
                   const errorData = JSON.parse(xhr.response);
@@ -279,8 +291,9 @@ export default function App() {
                   if (xhr.status === 413) errorMsg = "File is too large for the server.";
                   else if (xhr.status === 504) errorMsg = "Server timed out processing the file.";
                   else if (xhr.status === 403 || xhr.status === 401) {
-                    errorMsg = "Authentication lost. Please refresh the page.";
+                    errorMsg = "Authentication lost. Please refresh or open in a new tab.";
                     isCookieMsg = true;
+                    setHasSessionError(true);
                   }
                   else errorMsg = `Server error (${xhr.status}). Please try again later.`;
                 }
@@ -741,24 +754,26 @@ export default function App() {
 
         {/* Dynamic Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-10">
-          {files.some(f => f.isCookieError) && (
+          {(files.some(f => (f as any).isCookieError) || hasSessionError) && (
             <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              className="bg-app-accent-muted border border-app-accent/30 p-4 rounded-xl mb-8 flex items-center justify-between gap-4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl"
             >
-              <div className="flex items-center gap-3">
-                <div className="bg-app-accent p-2 rounded-lg">
-                  <ExternalLink className="w-4 h-4 text-app-bg" />
+              <div className="flex items-center gap-4">
+                <div className="bg-amber-500/20 p-3 rounded-xl">
+                  <BookOpen className="w-6 h-6 text-amber-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-app-text-main">Action Required: Authentication Challenge</p>
-                  <p className="text-xs text-app-text-dim">Your browser is protecting you by blocking security cookies. This app works best in its own tab.</p>
+                  <p className="text-base font-black text-amber-500">Security Session Blocked</p>
+                  <p className="text-sm text-amber-500/70 font-medium whitespace-normal max-w-xl">
+                    Your browser is blocking essential security cookies. This often happens in Safari, iOS apps, or private windows. Opening the application in a <b>New Tab</b> will resolve this session block immediately.
+                  </p>
                 </div>
               </div>
               <button 
                 onClick={() => window.open(window.location.href, '_blank')}
-                className="bg-app-accent text-app-bg px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity whitespace-nowrap"
+                className="w-full sm:w-auto bg-amber-500 text-app-bg px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg whitespace-nowrap"
               >
                 Open in New Tab
               </button>
@@ -1276,7 +1291,7 @@ export default function App() {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed lg:static inset-y-0 right-0 w-80 lg:w-96 bg-app-surface border-l border-app-border flex flex-col shadow-2xl lg:shadow-sm z-50 transition-transform duration-300 transform lg:translate-x-0",
+        "fixed lg:static inset-y-0 right-0 w-80 lg:w-96 bg-app-surface border-l border-app-border flex flex-col shadow-2xl lg:shadow-sm z-50 transition-transform duration-300 transform lg:translate-x-0 relative",
         isChatOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
       )}>
         <button 
